@@ -3,9 +3,10 @@ const { Schema } = mongoose
 
 const userSchema = new Schema(
   {
+    auth0Id: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    phoneNumber: { type: String, required: true },
+    phoneNumber: { type: String, default: '' },
     avatar: String,
     role: {
       type: String,

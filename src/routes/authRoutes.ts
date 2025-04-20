@@ -4,9 +4,11 @@ import { verifyUser } from '../middlewares/authMiddleware'
 
 const router = express.Router()
 
-// Define the routes for login and logout
-// router.post('/login', authController.login) // Handle login
-// router.post('/logout', authController.logout) // Handle logout
-router.get('/profile', verifyUser, authController.getProfile) // Get user profile
+router.post('/login/google', authController.loginWithGoogle)
+router.get('/profile', verifyUser, authController.getProfile)
+router.post('/register', authController.register)
+router.get('/login', authController.login)
+router.get('/callback', authController.callback)
+router.get('/logout', authController.logout)
 
 export default router
