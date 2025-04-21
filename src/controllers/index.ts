@@ -1,1 +1,5 @@
 export * from './shopItemController'
+export * from './newsController'
+export * from './eventController'
+export * from './movieController'
+export * from './theaterController'
