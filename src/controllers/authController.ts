@@ -1,14 +1,7 @@
 import { User } from '../models/User'
 import { Request, Response, NextFunction } from 'express'
 import axios from 'axios'
-import { log } from 'console'
-
-interface DecodedToken {
-  sub: string
-  email: string
-  name?: string
-  picture?: string
-}
+import jwt from 'jsonwebtoken'
 
 const authController = {
   getProfile: async (req: Request, res: Response) => {
@@ -17,65 +10,6 @@ const authController = {
       res.status(200).json({ user })
     } catch (error) {
       res.status(500).json({ message: 'Cannot get profile' })
-    }
-  },
-
-  loginWithGoogle: async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { access_token } = req.body
-
-      if (!access_token) {
-        res.status(400).json({ message: 'Access token required' })
-        return
-      }
-
-      // Gọi API Auth0 lấy user info
-      const { data: userInfo } = await axios.get(
-        `https://${process.env.AUTH0_DOMAIN}/userinfo`,
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
-        },
-      )
-
-      const { sub, email, name, picture } = userInfo
-
-      if (!sub || !email || !name) {
-        res.status(400).json({ message: 'Incomplete user info from Auth0' })
-        return
-      }
-
-      // Kiểm tra user đã tồn tại chưa
-      let user = await User.findOne({ auth0Id: sub })
-
-      if (!user) {
-        // Nếu chưa có thì tạo mới
-        user = await User.create({
-          auth0Id: sub,
-          email,
-          name,
-          phoneNumber: '',
-          avatar: picture,
-          role: 'user',
-        })
-      }
-
-      res.status(200).json({
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          avatar: user.avatar,
-          role: user.role,
-        },
-      })
-    } catch (error: any) {
-      console.error(
-        'Login Google error:',
-        error.response?.data || error.message || error,
-      )
-      res.status(500).json({ message: 'Internal Server Error' })
     }
   },
 
@@ -146,13 +80,13 @@ const authController = {
   },
 
   login: (req: Request, res: Response) => {
-    console.log('Redirecting to Auth0...')
     const authUrl =
       `https://${process.env.AUTH0_DOMAIN}/authorize?` +
       `response_type=code&` +
       `client_id=${process.env.AUTH0_CLIENT_ID}&` +
       `redirect_uri=${process.env.AUTH0_CALLBACK_URL}&` +
-      `scope=openid profile email`
+      `scope=openid profile email&` +
+      `audience=${process.env.AUTH0_AUDIENCE}`
 
     res.redirect(authUrl)
   },
@@ -176,6 +110,7 @@ const authController = {
           redirect_uri: process.env.AUTH0_CALLBACK_URL,
           client_id: process.env.AUTH0_CLIENT_ID,
           client_secret: process.env.AUTH0_CLIENT_SECRET,
+          audience: process.env.AUTH0_AUDIENCE,
         },
         {
           headers: { 'Content-Type': 'application/json' },
@@ -183,6 +118,12 @@ const authController = {
       )
 
       const { access_token, id_token } = response.data
+
+      let roles: string[] = []
+      if (id_token) {
+        const decoded: any = jwt.decode(id_token)
+        roles = decoded?.['https://cinema-api/roles'] || []
+      }
 
       const userInfoRes = await axios.get(
         `https://${process.env.AUTH0_DOMAIN}/userinfo`,
@@ -201,13 +142,14 @@ const authController = {
 
       let user = await User.findOne({ auth0Id: sub })
       if (!user) {
+        const role = roles && roles.includes('Admin') ? 'Admin' : 'User'
         user = await User.create({
           auth0Id: sub,
           email,
           name,
           avatar: picture,
           phoneNumber: '',
-          role: 'user',
+          role,
         })
       }
 
@@ -220,6 +162,7 @@ const authController = {
           email: user.email,
           name: user.name,
           avatar: user.avatar,
+          role: user.role,
         },
       })
     } catch (error: any) {
