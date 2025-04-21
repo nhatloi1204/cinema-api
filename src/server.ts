@@ -7,7 +7,7 @@ import connectDB from './config/db'
 import adminRoutes from './routes/adminRoutes'
 import userRoutes from './routes/userRoutes'
 import authRoutes from './routes/authRoutes'
-import testRoutes from './routes/testRoutes'
+import publicRoutes from './routes/publicRoutes'
 
 dotenv.config()
 connectDB()
@@ -28,10 +28,10 @@ app.use(helmet())
 app.use(express.static(path.join(__dirname, 'public')))
 
 // Route
-app.use('/', userRoutes)
+app.use('/public', publicRoutes)
+app.use('/user', userRoutes)
 app.use('/admin', adminRoutes)
 app.use('/auth', authRoutes)
-app.use('/api/test', testRoutes)
 
 const PORT = Number(process.env.PORT)
 const HOST = process.env.HOST || 'localhost'

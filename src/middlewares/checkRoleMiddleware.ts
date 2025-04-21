@@ -16,7 +16,7 @@ export const checkRole = (requiredRole: string) => {
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
-    const roles = req.auth?.['https://cinema-app/roles'] || []
+    const roles = (req.auth?.['https://cinema-api/roles'] as string[]) || []
 
     if (!roles.includes(requiredRole)) {
       res.status(403).json({ message: 'Forbidden: Insufficient role' })
