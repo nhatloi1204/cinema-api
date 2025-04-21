@@ -35,4 +35,11 @@ router.post('/theaters', adminController.createTheater)
 router.put('/theaters/:id', adminController.updateTheater)
 router.delete('/theaters/:id', adminController.deleteTheater)
 
+// ROOMS
+router.post('/rooms', adminController.createRoom)
+router.put('/rooms/:id', adminController.updateRoom)
+router.delete('/rooms/:id', adminController.deleteRoom)
+router.get('/rooms', adminController.getAllRooms)
+router.get('/rooms/:id', adminController.getRoomById)
+
 export default router
