@@ -23,4 +23,9 @@ router.get('/movies/:id', publicController.getMovieById)
 router.get('/theaters', publicController.getAllTheaters)
 router.get('/theaters/:id', publicController.getTheaterById)
 
+// SHOWTIMES
+router.get('/showtimes', publicController.getAllShowtimes)
+router.get('/showtimes/:id', publicController.getShowtimeById)
+router.get('/showtimes/movie/:movieId', publicController.getShowtimesByMovie)
+
 export default router
