@@ -42,4 +42,9 @@ router.delete('/rooms/:id', adminController.deleteRoom)
 router.get('/rooms', adminController.getAllRooms)
 router.get('/rooms/:id', adminController.getRoomById)
 
+// SHOWTIMES
+router.post('/showtimes', adminController.createShowtime)
+router.put('/showtimes/:id', adminController.updateShowtime)
+router.delete('/showtimes/:id', adminController.deleteShowtime)
+
 export default router
