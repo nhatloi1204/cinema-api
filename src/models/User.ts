@@ -8,6 +8,8 @@ const userSchema = new Schema(
     email: { type: String, required: true, unique: true },
     phoneNumber: { type: String, default: '' },
     avatar: String,
+    dob: { type: Date, default: null },
+    gender: { type: String, enum: ['Nam', 'Nữ', 'Khác'], default: 'Khác' },
     role: {
       type: String,
       enum: ['Admin', 'User'],
