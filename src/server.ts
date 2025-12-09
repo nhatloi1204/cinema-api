@@ -8,6 +8,7 @@ import adminRoutes from './routes/adminRoutes'
 import userRoutes from './routes/userRoutes'
 import authRoutes from './routes/authRoutes'
 import publicRoutes from './routes/publicRoutes'
+import cookieParser from 'cookie-parser'
 
 dotenv.config()
 connectDB()
@@ -16,11 +17,13 @@ const app = express()
 
 // Middleware
 app.use(express.json())
+app.use(cookieParser())
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || '*',
+    origin: process.env.CLIENT_URL,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   }),
 )
 app.use(helmet())

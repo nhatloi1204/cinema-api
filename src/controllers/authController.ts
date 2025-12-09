@@ -2,14 +2,70 @@ import { User } from '../models/User'
 import { Request, Response, NextFunction } from 'express'
 import axios from 'axios'
 import jwt from 'jsonwebtoken'
+import { get } from 'http'
 
 const authController = {
   getProfile: async (req: Request, res: Response) => {
     try {
-      const user = req.auth // lấy từ middleware verifyUser
-      res.status(200).json({ user })
+      const token = req.cookies.auth_token
+      if (!token) {
+        res.status(401).json({ message: 'Unauthorized' })
+        return
+      }
+
+      const decoded: any = jwt.decode(token)
+      if (!decoded || !decoded.sub) {
+        res.status(401).json({ message: 'Unauthorized' })
+        return
+      }
+
+      const userInfo = await User.findOne({ auth0Id: decoded.sub })
+      if (!userInfo) {
+        res.status(404).json({ message: 'User not found' })
+        return
+      }
+
+      res.status(200).json({ user: userInfo })
     } catch (error) {
-      res.status(500).json({ message: 'Cannot get profile' })
+      res.status(500).json({ message: 'Internal Server Error' })
+    }
+  },
+
+  updateUser: async (req: Request, res: Response) => {
+    try {
+      const user = req.auth
+      const { name, phoneNumber, dob, gender, avatar } = req.body
+      if (!user) {
+        res.status(401).json({ message: 'Unauthorized' })
+        return
+      }
+      const userInfo = await User.findOne({ auth0Id: user.sub })
+      if (!userInfo) {
+        res.status(404).json({ message: 'User not found' })
+        return
+      }
+      const updatedUser = await User.findByIdAndUpdate(
+        userInfo._id,
+        {
+          name,
+          phoneNumber,
+          dob,
+          gender,
+          avatar,
+        },
+        { new: true },
+      )
+      if (!updatedUser) {
+        res.status(404).json({ message: 'User not found' })
+        return
+      }
+      res.status(200).json({
+        message: 'User updated successfully',
+        user: updatedUser,
+      })
+    } catch (error) {
+      console.error('Update user error:', error)
+      res.status(500).json({ message: 'Internal Server Error' })
     }
   },
 
@@ -94,7 +150,7 @@ const authController = {
   // Xử lý callback từ Auth0 sau khi người dùng đăng nhập
   callback: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { code } = req.query
+      const code = req.method === 'GET' ? req.query.code : req.body.code
 
       if (!code) {
         res.status(400).json({ message: 'Authorization code is missing' })
@@ -150,21 +206,20 @@ const authController = {
           avatar: picture,
           phoneNumber: '',
           role,
+          dob: null,
+          gender: 'Khác',
         })
       }
 
-      res.status(200).json({
-        message: 'Login successful',
-        access_token,
-        id_token,
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          avatar: user.avatar,
-          role: user.role,
-        },
+      res.cookie('auth_token', access_token, {
+        httpOnly: true,
+        secure: true,
+        path: '/',
+        sameSite: 'none',
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
       })
+
+      return res.redirect(`${process.env.CLIENT_URL}?loggedIn=true`)
     } catch (error: any) {
       console.error('Callback error:', error.response?.data || error.message)
       res.status(500).json({ message: 'Internal Server Error' })
@@ -172,7 +227,14 @@ const authController = {
   },
 
   logout: (req: Request, res: Response) => {
-    const returnTo = process.env.BACKEND_URL || 'http://localhost:5000'
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+    })
+
+    const returnTo = process.env.CLIENT_URL || 'http://localhost:5107'
     const logoutUrl =
       `https://${process.env.AUTH0_DOMAIN}/v2/logout?` +
       `client_id=${process.env.AUTH0_CLIENT_ID}&` +
