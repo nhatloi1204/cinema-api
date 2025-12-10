@@ -219,7 +219,7 @@ const authController = {
         maxAge: 24 * 60 * 60 * 1000, // 1 day
       })
 
-      return res.redirect(`${process.env.CLIENT_URL}?loggedIn=true`)
+      return res.redirect(`${process.env.CLIENT_URL}`)
     } catch (error: any) {
       console.error('Callback error:', error.response?.data || error.message)
       res.status(500).json({ message: 'Internal Server Error' })
