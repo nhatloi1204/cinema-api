@@ -1,0 +1,1083 @@
+# openapi.yaml
+openapi: 3.0.0
+info:
+  title: Cinema Management API
+  version: 1.0.0
+  description: Tài liệu OpenAPI cho hệ thống Quản lý Rạp Chiếu Phim
+servers:
+  - url: http://localhost:5000
+    description: Local Server
+
+security:
+  - CookieAuth: []
+
+# ==================================
+#            PATHS (ENDPOINTS)
+# ==================================
+paths:
+  # --- AUTH ROUTES ---
+  /auth/register:
+    post:
+      summary: Đăng ký tài khoản mới
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegisterInput'
+      responses:
+        '201':
+          {
+            description: Đăng ký thành công,
+            content:
+              {
+                application/json:
+                  {
+                    schema: { $ref: '#/components/schemas/AuthRegisterOutput' },
+                  },
+              },
+          }
+        '400': { description: Thiếu thông tin hoặc lỗi Auth0 }
+  /auth/login:
+    get:
+      summary: Chuyển hướng đến Auth0 để đăng nhập (OAuth Flow)
+      tags: [Authentication]
+      responses:
+        '302': { description: Chuyển hướng thành công }
+  /auth/callback:
+    get:
+      summary: Callback xử lý mã Auth0 Code và đặt Cookie
+      tags: [Authentication]
+      parameters:
+        - in: query
+          name: code
+          schema: { type: string }
+          required: true
+          description: Mã xác thực từ Auth0
+      responses:
+        '302': { description: Đăng nhập thành công, chuyển hướng về CLIENT_URL }
+        '400': { description: Thiếu mã xác thực }
+  /auth/logout:
+    get:
+      summary: Đăng xuất và xóa Cookie, chuyển hướng đến Auth0 Logout
+      tags: [Authentication]
+      responses:
+        '302': { description: Đăng xuất thành công, chuyển hướng về Auth0 }
+
+  # --- USER ROUTES (yêu cầu verifyUser) ---
+  /user/profile:
+    get:
+      summary: Lấy thông tin hồ sơ người dùng hiện tại
+      tags: [User Profile]
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          {
+            description: Trả về thông tin user,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      {
+                        type: object,
+                        properties:
+                          { user: { $ref: '#/components/schemas/User' } },
+                      },
+                  },
+              },
+          }
+        '401': { description: Không được ủy quyền }
+    put:
+      summary: Cập nhật thông tin hồ sơ
+      tags: [User Profile]
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateInput'
+      responses:
+        '200':
+          {
+            description: Cập nhật thành công,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      {
+                        type: object,
+                        properties:
+                          { user: { $ref: '#/components/schemas/User' } },
+                      },
+                  },
+              },
+          }
+        '401': { description: Không được ủy quyền }
+
+  # --- PUBLIC ROUTES ---
+  /public/shop-items:
+    get:
+      summary: Lấy danh sách tất cả Shop Items
+      tags: [Public - Shop Items]
+      responses:
+        {
+          '200':
+            {
+              description: Danh sách Shop Items,
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          type: array,
+                          items: { $ref: '#/components/schemas/ShopItem' },
+                        },
+                    },
+                },
+            },
+        }
+  /public/shop-items/{id}:
+    get:
+      summary: Lấy Shop Item theo ID
+      tags: [Public - Shop Items]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        {
+          '200':
+            {
+              description: Shop Item chi tiết,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/ShopItem' } },
+                },
+            },
+        }
+
+  /public/news:
+    get:
+      summary: Lấy danh sách tất cả Tin tức
+      tags: [Public - News]
+      responses:
+        {
+          '200':
+            {
+              description: Danh sách News,
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          type: array,
+                          items: { $ref: '#/components/schemas/News' },
+                        },
+                    },
+                },
+            },
+        }
+  /public/news/{id}:
+    get:
+      summary: Lấy Tin tức theo ID
+      tags: [Public - News]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        {
+          '200':
+            {
+              description: Tin tức chi tiết,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/News' } },
+                },
+            },
+        }
+
+  /public/events:
+    get:
+      summary: Lấy danh sách tất cả Sự kiện
+      tags: [Public - Events]
+      responses:
+        {
+          '200':
+            {
+              description: Danh sách Events,
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          type: array,
+                          items: { $ref: '#/components/schemas/Event' },
+                        },
+                    },
+                },
+            },
+        }
+  /public/events/{id}:
+    get:
+      summary: Lấy Sự kiện theo ID
+      tags: [Public - Events]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        {
+          '200':
+            {
+              description: Sự kiện chi tiết,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Event' } },
+                },
+            },
+        }
+
+  /public/movies:
+    get:
+      summary: Lấy danh sách tất cả Phim
+      tags: [Public - Movies]
+      responses:
+        {
+          '200':
+            {
+              description: Danh sách Movies,
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          type: array,
+                          items: { $ref: '#/components/schemas/Movie' },
+                        },
+                    },
+                },
+            },
+        }
+  /public/movies/{id}:
+    get:
+      summary: Lấy Phim theo ID
+      tags: [Public - Movies]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        {
+          '200':
+            {
+              description: Phim chi tiết,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Movie' } },
+                },
+            },
+        }
+
+  /public/theaters:
+    get:
+      summary: Lấy danh sách tất cả Rạp Chiếu
+      tags: [Public - Theaters]
+      responses:
+        {
+          '200':
+            {
+              description: Danh sách Theaters,
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          type: array,
+                          items: { $ref: '#/components/schemas/Theater' },
+                        },
+                    },
+                },
+            },
+        }
+  /public/theaters/{id}:
+    get:
+      summary: Lấy Rạp Chiếu theo ID
+      tags: [Public - Theaters]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        {
+          '200':
+            {
+              description: Rạp Chiếu chi tiết,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Theater' } },
+                },
+            },
+        }
+
+  /public/showtimes:
+    get:
+      summary: Lấy danh sách tất cả Suất Chiếu
+      tags: [Public - Showtimes]
+      responses:
+        {
+          '200':
+            {
+              description: Danh sách Showtimes,
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          type: array,
+                          items: { $ref: '#/components/schemas/Showtime' },
+                        },
+                    },
+                },
+            },
+        }
+  /public/showtimes/{id}:
+    get:
+      summary: Lấy Suất Chiếu theo ID
+      tags: [Public - Showtimes]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        {
+          '200':
+            {
+              description: Suất Chiếu chi tiết,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Showtime' } },
+                },
+            },
+        }
+  /public/showtimes/movie/{movieId}:
+    get:
+      summary: Lấy Suất Chiếu theo ID Phim
+      tags: [Public - Showtimes]
+      parameters:
+        - in: path
+          name: movieId
+          schema: { type: string }
+          required: true
+      responses:
+        {
+          '200':
+            {
+              description: Danh sách Suất Chiếu theo Phim,
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          type: array,
+                          items: { $ref: '#/components/schemas/Showtime' },
+                        },
+                    },
+                },
+            },
+        }
+
+  # --- ADMIN ROUTES (yêu cầu Admin) ---
+  /admin/shop-items:
+    post:
+      summary: Tạo Shop Item mới
+      tags: [Admin - Shop Items]
+      security: [{ CookieAuth: [] }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/ShopItemInput' } },
+            },
+        }
+      responses:
+        {
+          '201':
+            {
+              description: Tạo thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/ShopItem' } },
+                },
+            },
+        }
+
+  /admin/shop-items/{id}:
+    put:
+      summary: Cập nhật Shop Item
+      tags: [Admin - Shop Items]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/ShopItemInput' } },
+            },
+        }
+      responses:
+        {
+          '200':
+            {
+              description: Cập nhật thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/ShopItem' } },
+                },
+            },
+        }
+    delete:
+      summary: Xóa Shop Item
+      tags: [Admin - Shop Items]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Xóa thành công } }
+
+  /admin/news:
+    post:
+      summary: Tạo Tin tức mới
+      tags: [Admin - News]
+      security: [{ CookieAuth: [] }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/NewsInput' } },
+            },
+        }
+      responses:
+        {
+          '201':
+            {
+              description: Tạo thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/News' } },
+                },
+            },
+        }
+  /admin/news/{id}:
+    put:
+      summary: Cập nhật Tin tức
+      tags: [Admin - News]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/NewsInput' } },
+            },
+        }
+      responses:
+        {
+          '200':
+            {
+              description: Cập nhật thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/News' } },
+                },
+            },
+        }
+    delete:
+      summary: Xóa Tin tức
+      tags: [Admin - News]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Xóa thành công } }
+
+  /admin/events:
+    post:
+      summary: Tạo Sự kiện mới
+      tags: [Admin - Events]
+      security: [{ CookieAuth: [] }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/EventInput' } },
+            },
+        }
+      responses:
+        {
+          '201':
+            {
+              description: Tạo thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Event' } },
+                },
+            },
+        }
+  /admin/events/{id}:
+    put:
+      summary: Cập nhật Sự kiện
+      tags: [Admin - Events]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/EventInput' } },
+            },
+        }
+      responses:
+        {
+          '200':
+            {
+              description: Cập nhật thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Event' } },
+                },
+            },
+        }
+    delete:
+      summary: Xóa Sự kiện
+      tags: [Admin - Events]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Xóa thành công } }
+
+  /admin/movies:
+    post:
+      summary: Tạo Phim mới
+      tags: [Admin - Movies]
+      security: [{ CookieAuth: [] }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/MovieInput' } },
+            },
+        }
+      responses:
+        {
+          '201':
+            {
+              description: Tạo thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Movie' } },
+                },
+            },
+        }
+  /admin/movies/{id}:
+    put:
+      summary: Cập nhật Phim
+      tags: [Admin - Movies]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/MovieInput' } },
+            },
+        }
+      responses:
+        {
+          '200':
+            {
+              description: Cập nhật thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Movie' } },
+                },
+            },
+        }
+    delete:
+      summary: Xóa Phim
+      tags: [Admin - Movies]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Xóa thành công } }
+
+  /admin/theaters:
+    post:
+      summary: Tạo Rạp Chiếu mới
+      tags: [Admin - Theaters]
+      security: [{ CookieAuth: [] }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/TheaterInput' } },
+            },
+        }
+      responses:
+        {
+          '201':
+            {
+              description: Tạo thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Theater' } },
+                },
+            },
+        }
+  /admin/theaters/{id}:
+    put:
+      summary: Cập nhật Rạp Chiếu
+      tags: [Admin - Theaters]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/TheaterInput' } },
+            },
+        }
+      responses:
+        {
+          '200':
+            {
+              description: Cập nhật thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Theater' } },
+                },
+            },
+        }
+    delete:
+      summary: Xóa Rạp Chiếu
+      tags: [Admin - Theaters]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Xóa thành công } }
+
+  /admin/rooms:
+    get:
+      summary: Lấy tất cả Phòng Chiếu (có populate Theater)
+      tags: [Admin - Rooms]
+      security: [{ CookieAuth: [] }]
+      responses:
+        {
+          '200':
+            {
+              description: Danh sách Rooms,
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          type: array,
+                          items: { $ref: '#/components/schemas/Room' },
+                        },
+                    },
+                },
+            },
+        }
+    post:
+      summary: Tạo Phòng Chiếu mới
+      tags: [Admin - Rooms]
+      security: [{ CookieAuth: [] }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/RoomCreateInput' } },
+            },
+        }
+      responses:
+        {
+          '201':
+            {
+              description: Tạo thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Room' } },
+                },
+            },
+        }
+  /admin/rooms/{id}:
+    get:
+      summary: Lấy Phòng Chiếu theo ID (có populate Theater)
+      tags: [Admin - Rooms]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        {
+          '200':
+            {
+              description: Phòng Chiếu chi tiết,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Room' } },
+                },
+            },
+        }
+    put:
+      summary: Cập nhật Phòng Chiếu
+      tags: [Admin - Rooms]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/RoomUpdateInput' } },
+            },
+        }
+      responses:
+        {
+          '200':
+            {
+              description: Cập nhật thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Room' } },
+                },
+            },
+        }
+    delete:
+      summary: Xóa Phòng Chiếu
+      tags: [Admin - Rooms]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Xóa thành công } }
+
+  /admin/showtimes:
+    post:
+      summary: Tạo Suất Chiếu mới
+      tags: [Admin - Showtimes]
+      security: [{ CookieAuth: [] }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/ShowtimeInput' } },
+            },
+        }
+      responses:
+        {
+          '201':
+            {
+              description: Tạo thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Showtime' } },
+                },
+            },
+        }
+  /admin/showtimes/{id}:
+    put:
+      summary: Cập nhật Suất Chiếu
+      tags: [Admin - Showtimes]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/ShowtimeInput' } },
+            },
+        }
+      responses:
+        {
+          '200':
+            {
+              description: Cập nhật thành công,
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: '#/components/schemas/Showtime' } },
+                },
+            },
+        }
+    delete:
+      summary: Xóa Suất Chiếu
+      tags: [Admin - Showtimes]
+      security: [{ CookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Xóa thành công } }
+
+# ==================================
+#           COMPONENTS (SCHEMAS)
+# ==================================
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: auth_token
+      description: Xác thực thông qua Cookie HTTP-only
+
+  parameters:
+    Id:
+      in: path
+      name: id
+      schema: { type: string }
+      required: true
+      description: ID của tài nguyên (Mongoose ObjectId)
+
+  schemas:
+    # --- INPUT SCHEMAS ---
+    AuthRegisterInput:
+      type: object
+      required: [email, password, username]
+      properties:
+        email: { type: string, format: email, example: user@example.com }
+        password: { type: string, format: password, example: P@sswOrd123 }
+        username: { type: string, example: JohnDoe }
+    UserUpdateInput:
+      type: object
+      properties:
+        name: { type: string, example: John Doe }
+        phoneNumber: { type: string, example: '0901234567' }
+        dob: { type: string, format: date, example: '1990-01-01' }
+        gender: { type: string, enum: ['Nam', 'Nữ', 'Khác'], example: 'Nam' }
+        avatar: { type: string, example: '/images/avatar.jpg' }
+    ShopItemInput:
+      type: object
+      required: [name, price]
+      properties:
+        name: { type: string, example: 'Combo Bắp nước Lớn' }
+        description: { type: string }
+        price: { type: number, format: float, example: 85000 }
+        image: { type: string }
+    NewsInput:
+      type: object
+      required: [title, content]
+      properties:
+        title: { type: string, example: 'Tin nóng phòng vé' }
+        content: { type: string }
+        image: { type: string }
+    EventInput:
+      type: object
+      required: [title, startDate, endDate]
+      properties:
+        title: { type: string, example: 'Sự kiện Ra mắt phim mới' }
+        description: { type: string }
+        image: { type: string }
+        startDate: { type: string, format: 'date-time' }
+        endDate: { type: string, format: 'date-time' }
+    TheaterInput:
+      type: object
+      required: [name, location]
+      properties:
+        name: { type: string, example: 'CGV Vincom Center' }
+        location: { type: string, example: 'Quận 1, TP.HCM' }
+    MovieInput:
+      type: object
+      required: [title, genre, duration, status]
+      properties:
+        title: { type: string, example: 'Avatar 2' }
+        description: { type: string }
+        genre: { type: string }
+        duration: { type: number, description: 'Thời lượng (phút)' }
+        releaseDate: { type: string, format: 'date' }
+        poster: { type: string }
+        trailerUrl: { type: string }
+        director: { type: string }
+        cast: { type: array, items: { type: 'string' } }
+        status:
+          { type: string, enum: ['now_showing', 'coming_soon', 'special'] }
+    RoomCreateInput:
+      type: object
+      required: [name, theaterId, rows, cols]
+      properties:
+        name: { type: string, example: 'Phòng 1' }
+        theaterId: { type: string, description: 'Mongoose ID của Rạp' }
+        rows: { type: number, example: 8 }
+        cols: { type: number, example: 12 }
+    RoomUpdateInput:
+      type: object
+      properties:
+        name: { type: string, example: 'Phòng VIP 1' }
+        rows: { type: number, example: 8 }
+        cols: { type: number, example: 12 }
+        seatLayout:
+          { type: 'array', description: 'Bố cục ghế sau khi chỉnh sửa' }
+    ShowtimeInput:
+      type: object
+      required: [movieId, roomId, theaterId, startTime, basePrice]
+      properties:
+        movieId: { type: string }
+        roomId: { type: string }
+        theaterId: { type: string }
+        startTime: { type: string, format: 'date-time' }
+        basePrice: { type: number }
+
+    # --- OUTPUT SCHEMAS (Giống định nghĩa Mongoose trước đó) ---
+    AuthRegisterOutput:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        avatar: { type: string }
+        role: { type: string, enum: ['Admin', 'User'] }
+
+    User:
+      type: object
+      properties:
+        _id: { type: string }
+        auth0Id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string }
+        phoneNumber: { type: string }
+        avatar: { type: string }
+        dob: { type: string, format: date }
+        gender: { type: string, enum: ['Nam', 'Nữ', 'Khác'] }
+        role: { type: string, enum: ['Admin', 'User'] }
+        createdAt: { type: string, format: 'date-time' }
+        updatedAt: { type: string, format: 'date-time' }
+
+    Theater:
+      type: object
+      properties:
+        _id: { type: string }
+        name: { type: string }
+        location: { type: string }
+        createdAt: { type: string, format: 'date-time' }
+        updatedAt: { type: string, format: 'date-time' }
+
+    Seat:
+      type: object
+      properties:
+        code: { type: 'string' }
+        type: { type: 'string', enum: ['normal', 'vip'] }
+
+    Room:
+      type: object
+      properties:
+        _id: { type: string }
+        name: { type: string }
+        theaterId: { $ref: '#/components/schemas/Theater' }
+        rows: { type: number }
+        cols: { type: number }
+        seatLayout:
+          type: array
+          description: 'Ma trận bố cục ghế [[Seat, Seat, null], ...]'
+          items:
+            type: array
+            items: { $ref: '#/components/schemas/Seat' }
+        createdAt: { type: string, format: 'date-time' }
+        updatedAt: { type: string, format: 'date-time' }
+
+    Movie:
+      type: object
+      properties:
+        _id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        genre: { type: string }
+        duration: { type: number }
+        releaseDate: { type: string, format: 'date' }
+        poster: { type: string }
+        trailerUrl: { type: string }
+        director: { type: string }
+        cast: { type: array, items: { type: 'string' } }
+        status:
+          { type: string, enum: ['now_showing', 'coming_soon', 'special'] }
+        createdAt: { type: string, format: 'date-time' }
+        updatedAt: { type: string, format: 'date-time' }
+
+    ShopItem:
+      type: object
+      properties:
+        _id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        image: { type: string }
+        createdAt: { type: string, format: 'date-time' }
+        updatedAt: { type: string, format: 'date-time' }
+
+    News:
+      type: object
+      properties:
+        _id: { type: string }
+        title: { type: string }
+        content: { type: string }
+        image: { type: string }
+        createdAt: { type: string, format: 'date-time' }
+        updatedAt: { type: string, format: 'date-time' }
+
+    Event:
+      type: object
+      properties:
+        _id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        image: { type: string }
+        startDate: { type: string, format: 'date-time' }
+        endDate: { type: string, format: 'date-time' }
+        createdAt: { type: string, format: 'date-time' }
+        updatedAt: { type: string, format: 'date-time' }
+
+    Showtime:
+      type: object
+      properties:
+        _id: { type: string }
+        movieId: { $ref: '#/components/schemas/Movie' }
+        roomId: { $ref: '#/components/schemas/Room' }
+        theaterId: { $ref: '#/components/schemas/Theater' }
+        startTime: { type: string, format: 'date-time' }
+        basePrice: { type: number }
+        createdAt: { type: string, format: 'date-time' }
+        updatedAt: { type: string, format: 'date-time' }
