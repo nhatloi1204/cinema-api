@@ -10,13 +10,13 @@ const movieSchema = new Schema(
     releaseDate: Date,
     poster: String,
     trailerUrl: String,
-    director: String,
-    cast: [String],
     status: {
       type: String,
-      enum: ['now_showing', 'coming_soon', 'special'],
+      enum: ['now_showing', 'coming_soon', 'offline'],
       required: true,
     },
+    director: String,
+    cast: [String],
   },
   { timestamps: true },
 )

@@ -18,6 +18,8 @@ export const createMovie = async (req: Request, res: Response) => {
       poster,
       trailerUrl,
       status,
+      director,
+      cast,
     } = req.body
     const movie = await Movie.create({
       title,
@@ -28,6 +30,8 @@ export const createMovie = async (req: Request, res: Response) => {
       poster,
       trailerUrl,
       status,
+      director,
+      cast,
     })
     res.status(201).json(movie)
   } catch (error) {
@@ -50,6 +54,8 @@ export const updateMovie = async (req: Request, res: Response) => {
       poster,
       trailerUrl,
       status,
+      director,
+      cast,
     } = req.body
     const updatedMovie = await Movie.findByIdAndUpdate(
       id,
@@ -62,6 +68,8 @@ export const updateMovie = async (req: Request, res: Response) => {
         poster,
         trailerUrl,
         status,
+        director,
+        cast,
       },
       {
         new: true,
