@@ -19,7 +19,11 @@ export const createRoom = async (req: Request, res: Response) => {
       seatLayout,
     })
 
-    res.status(201).json(room)
+    const populatedRoom = await room.populate([
+      { path: 'theaterId', select: 'name' },
+    ])
+
+    res.status(201).json(populatedRoom)
   } catch (error) {
     res.status(500).json({ message: 'Create Room Failed', error })
   }
