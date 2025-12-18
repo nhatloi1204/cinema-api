@@ -59,10 +59,38 @@ export const getShowtimesByMovie = async (req: Request, res: Response) => {
 // @access admin
 export const createShowtime = async (req: Request, res: Response) => {
   try {
+    const { roomId, startTime, endTime } = req.body
+
+    // Check for time conflicts in the same room
+    const conflictingShowtime = await Showtime.findOne({
+      roomId,
+      $and: [
+        // New showtime starts during an existing showtime
+        {
+          startTime: { $lt: new Date(endTime) },
+          endTime: { $gt: new Date(startTime) },
+        },
+      ],
+    })
+
+    if (conflictingShowtime) {
+      res.status(409).json({
+        error: 'Room already has a showtime scheduled during this time',
+        conflict: conflictingShowtime,
+      })
+      return
+    }
+
     const newShowtime = new Showtime(req.body)
     await newShowtime.save()
-    res.status(201).json(newShowtime)
-  } catch (error) {
+
+    const populatedShowtime = await newShowtime.populate([
+      { path: 'movieId', select: 'title' },
+      { path: 'roomId', select: 'name' },
+      { path: 'theaterId', select: 'name' },
+    ])
+    res.status(201).json(populatedShowtime)
+  } catch (error) { 
     res.status(400).json({ error: 'Failed to create showtime' })
   }
 }
