@@ -2,6 +2,7 @@ import express from 'express'
 import { verifyUser } from '../middlewares/authMiddleware'
 import { checkRole } from '../middlewares/checkRoleMiddleware'
 import * as adminController from '../controllers'
+import { uploadCloud } from '../configs/cloudinary'
 
 const router = express.Router()
 
@@ -26,7 +27,11 @@ router.put('/events/:id', adminController.updateEvent)
 router.delete('/events/:id', adminController.deleteEvent)
 
 // MOVIES
-router.post('/movies', adminController.createMovie)
+router.post(
+  '/movies',
+  uploadCloud.single('poster'),
+  adminController.createMovie,
+)
 router.put('/movies/:id', adminController.updateMovie)
 router.delete('/movies/:id', adminController.deleteMovie)
 

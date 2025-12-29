@@ -9,29 +9,15 @@ import { parseDate } from '../utils/parseDate'
 // @access Admin
 export const createMovie = async (req: Request, res: Response) => {
   try {
-    const {
-      title,
-      description,
-      genre,
-      duration,
-      releaseDate,
-      poster,
-      trailerUrl,
-      status,
-      director,
-      cast,
-    } = req.body
+    const movieData = req.body
+
+    if (req.file) {
+      req.body.poster = req.file.path
+    }
+
     const movie = await Movie.create({
-      title,
-      description,
-      genre,
-      duration,
-      releaseDate: parseDate(releaseDate),
-      poster,
-      trailerUrl,
-      status,
-      director,
-      cast,
+      ...movieData,
+      releaseDate: parseDate(movieData.releaseDate),
     })
     res.status(201).json(movie)
   } catch (error) {
@@ -45,36 +31,18 @@ export const createMovie = async (req: Request, res: Response) => {
 export const updateMovie = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const {
-      title,
-      description,
-      genre,
-      duration,
-      releaseDate,
-      poster,
-      trailerUrl,
-      status,
-      director,
-      cast,
-    } = req.body
-    const updatedMovie = await Movie.findByIdAndUpdate(
-      id,
-      {
-        title,
-        description,
-        genre,
-        duration,
-        releaseDate: parseDate(releaseDate),
-        poster,
-        trailerUrl,
-        status,
-        director,
-        cast,
-      },
-      {
-        new: true,
-      },
-    )
+    const updateData = req.body
+
+    if (req.file) {
+      updateData.poster = req.file.path
+    }
+    if (updateData.releaseDate) {
+      updateData.releaseDate = parseDate(updateData.releaseDate)
+    }
+
+    const updatedMovie = await Movie.findByIdAndUpdate(id, updateData, {
+      new: true,
+    })
 
     if (!updatedMovie) {
       res.status(404).json({ message: 'Movie not found' })
