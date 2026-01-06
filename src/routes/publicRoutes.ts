@@ -27,5 +27,7 @@ router.get('/theaters/:id', publicController.getTheaterById)
 router.get('/showtimes', publicController.getAllShowtimes)
 router.get('/showtimes/:id', publicController.getShowtimeById)
 router.get('/showtimes/movie/:movieId', publicController.getShowtimesByMovie)
+router.get('/showtimes/:id/occupied-seats', publicController.getOccupiedSeats)
+router.get('/showtimes/:id/seats-layout', publicController.getSeatsLayout)
 
 export default router
