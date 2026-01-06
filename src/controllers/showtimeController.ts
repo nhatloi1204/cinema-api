@@ -1,5 +1,7 @@
 import { Request, Response } from 'express'
 import { Showtime } from '../models/Showtime'
+import { Booking } from '../models/Booking'
+import { Room } from '../models/Room'
 
 // ================== PUBLIC ==================
 
@@ -90,7 +92,7 @@ export const createShowtime = async (req: Request, res: Response) => {
       { path: 'theaterId', select: 'name' },
     ])
     res.status(201).json(populatedShowtime)
-  } catch (error) { 
+  } catch (error) {
     res.status(400).json({ error: 'Failed to create showtime' })
   }
 }
@@ -128,5 +130,115 @@ export const deleteShowtime = async (req: Request, res: Response) => {
     res.json({ message: 'Showtime deleted successfully' })
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete showtime' })
+  }
+}
+
+// @desc GET occupied seats for a showtime
+// @route GET /api/showtimes/:id/occupied-seats
+// @access Public
+export const getOccupiedSeats = async (req: Request, res: Response) => {
+  try {
+    const { id: showtimeId } = req.params
+
+    // Verify showtime exists
+    const showtime = await Showtime.findById(showtimeId)
+    if (!showtime) {
+      res.status(404).json({ error: 'Showtime not found' })
+      return
+    }
+
+    // Get all bookings for this showtime with payment status 'paid' or 'pending'
+    const bookings = await Booking.find({
+      showtimeId,
+      paymentStatus: { $in: ['paid', 'pending'] },
+    }).select('seats')
+
+    // Flatten all occupied seats
+    const occupiedSeats = bookings.reduce((acc: string[], booking) => {
+      return [...acc, ...booking.seats]
+    }, [])
+
+    // Get room info to send seat layout to frontend
+    const room = await Room.findById(showtime.roomId)
+
+    res.json({
+      occupiedSeats,
+      roomInfo: room ? { rows: room.rows, cols: room.cols } : null,
+      showtimeId,
+    })
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch occupied seats' })
+  }
+}
+
+// @desc GET available seats layout for a showtime (including occupied seats info)
+// @route GET /api/showtimes/:id/seats-layout
+// @access Public
+export const getSeatsLayout = async (req: Request, res: Response) => {
+  try {
+    const { id: showtimeId } = req.params
+
+    // Get showtime with room details
+    const showtime = await Showtime.findById(showtimeId)
+      .populate('roomId')
+      .exec()
+
+    if (!showtime) {
+      res.status(404).json({ error: 'Showtime not found' })
+      return
+    }
+
+    const room = showtime.roomId as any
+    if (!room) {
+      res.status(404).json({ error: 'Room not found' })
+      return
+    }
+
+    // Get all occupied seats
+    const bookings = await Booking.find({
+      showtimeId,
+      paymentStatus: { $in: ['paid', 'pending'] },
+    }).select('seats')
+
+    const occupiedSeats = new Set(
+      bookings.reduce((acc: string[], booking) => {
+        return [...acc, ...booking.seats]
+      }, []),
+    )
+
+    // Build seat layout with availability status
+    const seatsLayout = room.seatLayout.map((row: any[], rowIndex: number) => {
+      return row.map((seat: any, colIndex: number) => {
+        if (!seat) {
+          return null
+        }
+
+        const seatCode = seat.code
+        const isOccupied = occupiedSeats.has(seatCode)
+
+        return {
+          code: seatCode,
+          type: seat.type,
+          available: !isOccupied,
+          occupied: isOccupied,
+        }
+      })
+    })
+
+    res.json({
+      showtimeId,
+      roomId: room._id,
+      roomName: room.name,
+      rows: room.rows,
+      cols: room.cols,
+      seatsLayout,
+      summary: {
+        total: room.rows * room.cols,
+        occupied: occupiedSeats.size,
+        available: room.rows * room.cols - occupiedSeats.size,
+      },
+    })
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch seats layout' })
   }
 }

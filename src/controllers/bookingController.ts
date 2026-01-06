@@ -5,6 +5,7 @@ import { Booking } from '../models/Booking'
 import { Showtime } from '../models/Showtime'
 import { ShopItem } from '../models/ShopItem'
 import { Room } from '../models/Room'
+import { User } from '../models/User'
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
@@ -30,7 +31,9 @@ export const createBooking = async (req: Request, res: Response) => {
   session.startTransaction()
 
   try {
-    const userId = (req as any).user?.id
+    const auth0Id = (req as any).auth?.sub
+    const user = await User.findOne({ auth0Id }).session(session)
+
     const { showtimeId, seats, shopItems = [] } = req.body
 
     // ========== VALIDATION ==========
@@ -45,7 +48,7 @@ export const createBooking = async (req: Request, res: Response) => {
     }
 
     // 2. Check if user is authenticated
-    if (!userId) {
+    if (!user) {
       res.status(401).json({ message: 'User not authenticated' })
       await session.abortTransaction()
       return
@@ -171,7 +174,7 @@ export const createBooking = async (req: Request, res: Response) => {
     // ========== CREATE BOOKING ==========
 
     const bookingData = {
-      userId,
+      userId: user._id,
       showtimeId,
       seats,
       shopItems,
@@ -204,7 +207,7 @@ export const createBooking = async (req: Request, res: Response) => {
       currency,
       metadata: {
         bookingId: newBooking._id.toString(),
-        userId: userId,
+        userId: user._id.toString(),
         showtimeId,
         seats: seats.join(','),
       },
