@@ -11,12 +11,20 @@ import publicRoutes from './routes/publicRoutes'
 import cookieParser from 'cookie-parser'
 import swaggerUi from 'swagger-ui-express'
 import YAML from 'yamljs'
+import { handleStripeWebhook, confirmPayment } from './services/paymentService'
 
 dotenv.config()
 connectDB()
 
 const app = express()
 const swaggerDocument = YAML.load('src/openapi.yaml')
+
+// Webhook route (must be before express.json() middleware)
+app.post(
+  '/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  handleStripeWebhook,
+)
 
 // Middleware
 app.use(express.json())
