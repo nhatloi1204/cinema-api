@@ -210,3 +210,83 @@ export const confirmPayment = async (req: Request, res: Response) => {
     })
   }
 }
+
+/**
+ * @desc Create payment intent for a booking
+ * @route POST /bookings/create-payment-intent
+ * @access Private (User)
+ *
+ * Request body:
+ * {
+ *   bookingId: string
+ * }
+ */
+export const createPaymentIntent = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id
+    const { bookingId } = req.body
+
+    if (!bookingId) {
+      res.status(400).json({ message: 'Missing bookingId' })
+      return
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      res.status(400).json({ message: 'Invalid booking ID' })
+      return
+    }
+
+    // Get the booking
+    const booking = await Booking.findById(bookingId)
+
+    if (!booking) {
+      res.status(404).json({ message: 'Booking not found' })
+      return
+    }
+
+    // Verify user ownership
+    if (booking.userId.toString() !== userId) {
+      res
+        .status(403)
+        .json({ message: 'Unauthorized to create payment for this booking' })
+      return
+    }
+
+    /**
+     * Check if a payment intent already exists for the booking
+     */
+    const allPaymentIntents = await stripe.paymentIntents.list()
+
+    const existingPaymentIntent = allPaymentIntents.data.find(
+      intent => intent.metadata?.bookingId === bookingId,
+    )
+
+    if (existingPaymentIntent) {
+      res.status(400).json({
+        message: 'A payment intent already exists for this booking',
+        paymentIntentId: existingPaymentIntent.id,
+      })
+      return
+    }
+
+    // Create a new payment intent if none exists
+    const newPaymentIntent = await stripe.paymentIntents.create({
+      amount: booking.totalPrice * 100, // Convert to cents
+      currency: 'usd',
+      metadata: { bookingId },
+    })
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment intent created successfully',
+      paymentIntentId: newPaymentIntent.id,
+    })
+  } catch (error) {
+    console.error('Error creating payment intent:', error)
+
+    res.status(500).json({
+      message: 'Create Payment Intent Failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+}
