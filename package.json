@@ -5,7 +5,9 @@
     "author": "Nhat Loi <nhatloi120402@gmail.com>",
     "license": "MIT",
     "scripts": {
-        "dev": "nodemon src/server.ts"
+        "dev": "nodemon src/server.ts",
+        "build": "tsc",
+        "start": "node dist/server.js"
     },
     "dependencies": {
         "axios": "^1.8.4",
