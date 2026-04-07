@@ -57,7 +57,7 @@ const PORT = Number(process.env.PORT)
 const HOST = process.env.HOST || 'localhost'
 
 // Khởi động máy chủ
-app.listen(PORT, HOST, () => {
-  console.log(`Thành công  http://${HOST}:${PORT}`)
-  console.log(`Swagger Docs: http://${HOST}:${PORT}/api-docs`)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`)
+  console.log(`📚 Swagger Docs: /api-docs`)
 })
