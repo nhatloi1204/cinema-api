@@ -32,7 +32,11 @@ router.post(
   uploadCloud.single('poster'),
   adminController.createMovie,
 )
-router.put('/movies/:id', adminController.updateMovie)
+router.put(
+  '/movies/:id',
+  uploadCloud.single('poster'),
+  adminController.updateMovie,
+)
 router.delete('/movies/:id', adminController.deleteMovie)
 
 // THEATERS
