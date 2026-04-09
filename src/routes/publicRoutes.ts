@@ -30,4 +30,8 @@ router.get('/showtimes/movie/:movieId', publicController.getShowtimesByMovie)
 router.get('/showtimes/:id/occupied-seats', publicController.getOccupiedSeats)
 router.get('/showtimes/:id/seats-layout', publicController.getSeatsLayout)
 
+// BANNERS
+router.get('/banners', publicController.getAllBanners)
+router.get('/banners/:id', publicController.getBannerById)
+
 export default router

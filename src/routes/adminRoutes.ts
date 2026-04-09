@@ -56,4 +56,33 @@ router.post('/showtimes', adminController.createShowtime)
 router.put('/showtimes/:id', adminController.updateShowtime)
 router.delete('/showtimes/:id', adminController.deleteShowtime)
 
+// BANNERS
+router.post(
+  '/banners',
+  (req, res, next) => {
+    uploadCloud.single('image')(req, res, err => {
+      if (err) {
+        console.error('Multer error:', err)
+        return res.status(400).json({ error: 'File upload failed' })
+      }
+      next()
+    })
+  },
+  adminController.createBanner,
+)
+router.put(
+  '/banners/:id',
+  (req, res, next) => {
+    uploadCloud.single('image')(req, res, err => {
+      if (err) {
+        console.error('Multer error:', err)
+        return res.status(400).json({ error: 'File upload failed' })
+      }
+      next()
+    })
+  },
+  adminController.updateBanner,
+)
+router.delete('/banners/:id', adminController.deleteBanner)
+
 export default router
