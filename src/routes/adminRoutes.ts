@@ -55,6 +55,11 @@ router.get('/rooms/:id', adminController.getRoomById)
 router.post('/showtimes', adminController.createShowtime)
 router.put('/showtimes/:id', adminController.updateShowtime)
 router.delete('/showtimes/:id', adminController.deleteShowtime)
+router.post(
+  '/showtimes/generate-preview',
+  adminController.generateShowtimePreview,
+)
+router.post('/showtimes/save-generated', adminController.saveGeneratedShowtimes)
 
 // BANNERS
 router.post(

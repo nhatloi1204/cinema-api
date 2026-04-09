@@ -2,6 +2,8 @@ import { Request, Response } from 'express'
 import { Showtime } from '../models/Showtime'
 import { Booking } from '../models/Booking'
 import { Room } from '../models/Room'
+import { generateSchedules } from '../utils/scheduleGenerator'
+import { Movie } from '../models/Movie'
 
 // ================== PUBLIC ==================
 
@@ -240,5 +242,183 @@ export const getSeatsLayout = async (req: Request, res: Response) => {
     })
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch seats layout' })
+  }
+}
+
+// @desc GENERATE showtime preview (not saved to DB)
+// @route POST /admin/showtimes/generate-preview
+// @access Admin
+export const generateShowtimePreview = async (req: Request, res: Response) => {
+  try {
+    const {
+      filmIds,
+      filmPriorities,
+      roomIds,
+      startDate,
+      endDate,
+      timeSlots,
+      bufferTime,
+      price,
+      theaterId,
+    } = req.body
+
+    // Validate input
+    if (
+      !filmIds ||
+      !roomIds ||
+      !startDate ||
+      !endDate ||
+      !timeSlots ||
+      !theaterId
+    ) {
+      res.status(400).json({ error: 'Missing required fields' })
+      return
+    }
+
+    const result = await generateSchedules({
+      filmIds,
+      filmPriorities:
+        filmPriorities || filmIds.map((_: any, i: number) => i + 1),
+      roomIds,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      timeSlots,
+      bufferTime: bufferTime || 20,
+      price: price || 100000,
+      theaterId,
+    })
+
+    res.status(200).json({
+      status: 'preview',
+      totalShowtimes: result.showtimes.length,
+      preview: result.showtimes,
+      conflicts: result.conflicts.length > 0 ? result.conflicts : undefined,
+      message:
+        result.conflicts.length > 0
+          ? `${result.conflicts.length} khung giờ không thể sắp xếp do bị trùng với suất chiếu đã tồn tại`
+          : undefined,
+    })
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ error: error.message || 'Failed to generate preview' })
+  }
+}
+
+// @desc SAVE generated showtimes to database
+// @route POST /admin/showtimes/save-generated
+// @access Admin
+export const saveGeneratedShowtimes = async (req: Request, res: Response) => {
+  try {
+    const { showtimes } = req.body
+
+    if (!Array.isArray(showtimes) || showtimes.length === 0) {
+      res.status(400).json({ error: 'Invalid showtimes array' })
+      return
+    }
+
+    // Check for conflicts WITHIN preview
+    const roomIds = [...new Set(showtimes.map((s: any) => s.roomId))]
+
+    for (const roomId of roomIds) {
+      const roomShowtimes = showtimes.filter((s: any) => s.roomId === roomId)
+
+      for (let i = 0; i < roomShowtimes.length; i++) {
+        for (let j = i + 1; j < roomShowtimes.length; j++) {
+          const st1 = roomShowtimes[i]
+          const st2 = roomShowtimes[j]
+
+          const start1 = new Date(st1.startTime)
+          const end1 = new Date(st1.endTime)
+          const start2 = new Date(st2.startTime)
+          const end2 = new Date(st2.endTime)
+
+          // Check overlap
+          if (start1 < end2 && start2 < end1) {
+            res.status(409).json({
+              error: 'Time conflict detected in generated showtimes',
+              details: {
+                room: st1.roomName,
+                conflict1: {
+                  movieTitle: st1.movieTitle,
+                  startTime: st1.startTime,
+                  endTime: st1.endTime,
+                },
+                conflict2: {
+                  movieTitle: st2.movieTitle,
+                  startTime: st2.startTime,
+                  endTime: st2.endTime,
+                },
+              },
+            })
+            return
+          }
+        }
+      }
+    }
+
+    // Check for conflicts with EXISTING showtimes in database
+    for (const newShowtime of showtimes) {
+      const existingConflict = await Showtime.findOne({
+        theaterId: newShowtime.theaterId,
+        roomId: newShowtime.roomId,
+        $and: [
+          {
+            startTime: { $lt: new Date(newShowtime.endTime) },
+            endTime: { $gt: new Date(newShowtime.startTime) },
+          },
+        ],
+      })
+        .populate('movieId', 'title')
+        .populate('roomId', 'name')
+
+      if (existingConflict) {
+        const room = existingConflict.roomId as any
+        res.status(409).json({
+          error: 'Time conflict with existing showtimes in database',
+          details: {
+            room: room?.name,
+            newShowtime: {
+              movieTitle: newShowtime.movieTitle,
+              startTime: newShowtime.startTime,
+              endTime: newShowtime.endTime,
+            },
+            existingShowtime: {
+              movieTitle: existingConflict.movieId,
+              startTime: existingConflict.startTime,
+              endTime: existingConflict.endTime,
+            },
+          },
+        })
+        return
+      }
+    }
+
+    // Insert all showtimes
+    const createdShowtimes = await Showtime.insertMany(
+      showtimes.map((st: any) => ({
+        movieId: st.movieId,
+        roomId: st.roomId,
+        theaterId: st.theaterId,
+        startTime: st.startTime,
+        endTime: st.endTime,
+        price: st.price,
+      })),
+    )
+
+    const populated = await Showtime.find({
+      _id: { $in: createdShowtimes.map(s => s._id) },
+    })
+      .populate('movieId', 'title duration')
+      .populate('roomId', 'name')
+      .populate('theaterId', 'name')
+
+    res.status(201).json({
+      status: 'success',
+      totalSaved: createdShowtimes.length,
+      showtimes: populated,
+    })
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to save showtimes' })
   }
 }
