@@ -277,10 +277,22 @@ export const createBooking = async (req: Request, res: Response) => {
 export const getBookingById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const userId = (req as any).user?.id
+    const auth0Id = (req as any).auth?.sub
+
+    if (!auth0Id) {
+      res.status(401).json({ message: 'User not authenticated' })
+      return
+    }
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       res.status(400).json({ message: 'Invalid booking ID' })
+      return
+    }
+
+    const user = await User.findOne({ auth0Id })
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' })
       return
     }
 
@@ -295,7 +307,7 @@ export const getBookingById = async (req: Request, res: Response) => {
     }
 
     // Check ownership
-    if (booking.userId && (booking.userId as any)._id.toString() !== userId) {
+    if (booking.userId.toString() !== user._id.toString()) {
       res.status(403).json({ message: 'Unauthorized to access this booking' })
       return
     }
@@ -316,14 +328,21 @@ export const getBookingById = async (req: Request, res: Response) => {
  */
 export const getUserBookings = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id
+    const auth0Id = (req as any).auth?.sub
 
-    if (!userId) {
+    if (!auth0Id) {
       res.status(401).json({ message: 'User not authenticated' })
       return
     }
 
-    const bookings = await Booking.find({ userId })
+    const user = await User.findOne({ auth0Id })
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' })
+      return
+    }
+
+    const bookings = await Booking.find({ userId: user._id })
       .populate('showtimeId', 'startTime endTime price')
       .populate('shopItems.itemId', 'name price')
       .sort({ createdAt: -1 })
@@ -348,10 +367,24 @@ export const cancelBooking = async (req: Request, res: Response) => {
 
   try {
     const { id } = req.params
-    const userId = (req as any).user?.id
+    const auth0Id = (req as any).auth?.sub
+
+    if (!auth0Id) {
+      res.status(401).json({ message: 'User not authenticated' })
+      await session.abortTransaction()
+      return
+    }
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       res.status(400).json({ message: 'Invalid booking ID' })
+      await session.abortTransaction()
+      return
+    }
+
+    const user = await User.findOne({ auth0Id }).session(session)
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' })
       await session.abortTransaction()
       return
     }
@@ -365,7 +398,7 @@ export const cancelBooking = async (req: Request, res: Response) => {
     }
 
     // Check ownership
-    if (booking.userId.toString() !== userId) {
+    if (booking.userId.toString() !== user._id.toString()) {
       res.status(403).json({ message: 'Unauthorized to cancel this booking' })
       await session.abortTransaction()
       return
