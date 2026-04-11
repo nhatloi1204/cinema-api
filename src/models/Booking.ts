@@ -19,7 +19,7 @@ const bookingSchema = new Schema(
     totalPrice: { type: Number, required: true },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'cancelled'],
+      enum: ['pending', 'paid', 'cancelled', 'failed'],
       default: 'pending',
     },
   },
