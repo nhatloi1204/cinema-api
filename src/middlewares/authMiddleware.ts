@@ -5,8 +5,11 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-const getTokenFromCookie = (req: any) => {
-  return req.cookies?.auth_token
+const getTokenFromHeader = (req: any) => {
+  if (req.headers.authorization?.startsWith('Bearer ')) {
+    return req.headers.authorization.split(' ')[1]
+  }
+  return null
 }
 
 export const verifyUser = expressjwt({
@@ -19,5 +22,5 @@ export const verifyUser = expressjwt({
   audience: process.env.AUTH0_AUDIENCE,
   issuer: `https://${process.env.AUTH0_DOMAIN}/`,
   algorithms: ['RS256'],
-  getToken: getTokenFromCookie,
+  getToken: getTokenFromHeader,
 })
