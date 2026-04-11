@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import mongoose from 'mongoose'
 import Stripe from 'stripe'
 import { Booking } from '../models/Booking'
+import { User } from '../models/User'
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
@@ -67,7 +68,7 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
 
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
-        console.log('Payment failed:', paymentIntent.id)
+        console.log('❌ Payment failed:', paymentIntent.id)
 
         const bookingId = paymentIntent.metadata?.bookingId
 
@@ -76,20 +77,54 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
           break
         }
 
-        // Optionally: Update booking or create a log of failed payment
-        console.log(
-          `Payment failed for booking ${bookingId}: ${paymentIntent.last_payment_error?.message}`,
+        // Update booking status to 'failed'
+        const updatedBooking = await Booking.findByIdAndUpdate(
+          bookingId,
+          { paymentStatus: 'failed' },
+          { new: true },
         )
+
+        if (updatedBooking) {
+          console.log(`✅ Booking ${bookingId} marked as failed`)
+        } else {
+          console.error(`Booking ${bookingId} not found`)
+        }
 
         break
       }
 
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge
-        console.log('Refund processed:', charge.id)
+        console.log('💰 Refund processed:', charge.id)
 
-        // Handle refund logic if needed
-        // You might want to update booking status or send notification
+        // Find booking via payment intent metadata
+        if (charge.payment_intent) {
+          try {
+            const paymentIntent = await stripe.paymentIntents.retrieve(
+              charge.payment_intent as string,
+            )
+            const bookingId = paymentIntent.metadata?.bookingId
+
+            if (bookingId) {
+              // Update booking status to 'cancelled'
+              const updatedBooking = await Booking.findByIdAndUpdate(
+                bookingId,
+                { paymentStatus: 'cancelled' },
+                { new: true },
+              )
+
+              if (updatedBooking) {
+                console.log(
+                  `✅ Booking ${bookingId} cancelled - refund processed`,
+                )
+              } else {
+                console.error(`Booking ${bookingId} not found for cancellation`)
+              }
+            }
+          } catch (error) {
+            console.error('Error processing refund webhook:', error)
+          }
+        }
 
         break
       }
@@ -123,8 +158,13 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
  */
 export const confirmPayment = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id
+    const auth0Id = (req as any).auth?.sub
     const { bookingId, paymentIntentId } = req.body
+
+    if (!auth0Id) {
+      res.status(401).json({ message: 'User not authenticated' })
+      return
+    }
 
     if (!bookingId || !paymentIntentId) {
       res.status(400).json({
@@ -135,6 +175,28 @@ export const confirmPayment = async (req: Request, res: Response) => {
 
     if (!mongoose.Types.ObjectId.isValid(bookingId)) {
       res.status(400).json({ message: 'Invalid booking ID' })
+      return
+    }
+
+    // Get the booking
+    const booking = await Booking.findById(bookingId)
+
+    if (!booking) {
+      res.status(404).json({ message: 'Booking not found' })
+      return
+    }
+
+    // Get user by auth0Id
+    const user = await User.findOne({ auth0Id })
+
+    if (!user) {
+      res.status(401).json({ message: 'User not found' })
+      return
+    }
+
+    // Verify user ownership
+    if (booking.userId.toString() !== user._id.toString()) {
+      res.status(403).json({ message: 'Unauthorized to confirm this booking' })
       return
     }
 
@@ -151,20 +213,6 @@ export const confirmPayment = async (req: Request, res: Response) => {
       res.status(400).json({
         message: 'Payment intent does not match booking',
       })
-      return
-    }
-
-    // Get the booking
-    const booking = await Booking.findById(bookingId)
-
-    if (!booking) {
-      res.status(404).json({ message: 'Booking not found' })
-      return
-    }
-
-    // Verify user ownership
-    if (booking.userId.toString() !== userId) {
-      res.status(403).json({ message: 'Unauthorized to confirm this booking' })
       return
     }
 
@@ -223,8 +271,13 @@ export const confirmPayment = async (req: Request, res: Response) => {
  */
 export const createPaymentIntent = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id
+    const auth0Id = (req as any).auth?.sub
     const { bookingId } = req.body
+
+    if (!auth0Id) {
+      res.status(401).json({ message: 'User not authenticated' })
+      return
+    }
 
     if (!bookingId) {
       res.status(400).json({ message: 'Missing bookingId' })
@@ -244,8 +297,16 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
       return
     }
 
+    // Get user by auth0Id
+    const user = await User.findOne({ auth0Id })
+
+    if (!user) {
+      res.status(401).json({ message: 'User not found' })
+      return
+    }
+
     // Verify user ownership
-    if (booking.userId.toString() !== userId) {
+    if (booking.userId.toString() !== user._id.toString()) {
       res
         .status(403)
         .json({ message: 'Unauthorized to create payment for this booking' })
