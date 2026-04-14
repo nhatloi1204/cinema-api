@@ -110,12 +110,19 @@ export const createBooking = async (req: Request, res: Response) => {
       }
     }
 
-    // 7. Check if seats are already booked (paid or pending) for this showtime
+    // 7. Check if seats are already booked (paid or unexpired pending) for this showtime
+    const now = new Date()
     const existingBookings = await Booking.find(
       {
         showtimeId,
-        paymentStatus: { $in: ['paid', 'pending'] },
         seats: { $in: seats },
+        $or: [
+          { paymentStatus: 'paid' },
+          {
+            paymentStatus: 'pending',
+            expiresAt: { $gt: now },
+          },
+        ],
       },
       null,
       { session },
@@ -173,6 +180,9 @@ export const createBooking = async (req: Request, res: Response) => {
 
     // ========== CREATE BOOKING ==========
 
+    // Set expiration time for pending booking (10 minutes)
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+
     const bookingData = {
       userId: user._id,
       showtimeId,
@@ -180,6 +190,7 @@ export const createBooking = async (req: Request, res: Response) => {
       shopItems,
       totalPrice,
       paymentStatus: 'pending',
+      expiresAt,
     }
 
     const booking = await Booking.create([bookingData], { session })
@@ -217,6 +228,13 @@ export const createBooking = async (req: Request, res: Response) => {
     // ========== COMMIT TRANSACTION ==========
 
     await session.commitTransaction()
+
+    // Store paymentIntentId in booking (after transaction commit)
+    await Booking.findByIdAndUpdate(
+      newBooking._id,
+      { paymentIntentId: paymentIntent.id },
+      { new: true },
+    )
 
     // ========== RESPONSE ==========
 

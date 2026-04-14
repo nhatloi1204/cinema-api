@@ -12,6 +12,7 @@ import cookieParser from 'cookie-parser'
 import swaggerUi from 'swagger-ui-express'
 import YAML from 'yamljs'
 import { handleStripeWebhook } from './services/paymentService'
+import { startBookingCleanupScheduler } from './services/bookingCleanupService'
 
 dotenv.config()
 connectDB()
@@ -56,6 +57,9 @@ app.use(
 
 const PORT = Number(process.env.PORT)
 const HOST = process.env.HOST || 'localhost'
+
+// Start booking cleanup scheduler
+startBookingCleanupScheduler()
 
 // Khởi động máy chủ
 app.listen(PORT, '0.0.0.0', () => {
