@@ -19,9 +19,11 @@ const bookingSchema = new Schema(
     totalPrice: { type: Number, required: true },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'cancelled', 'failed'],
+      enum: ['pending', 'paid', 'cancelled', 'failed', 'expired'],
       default: 'pending',
     },
+    paymentIntentId: { type: String }, // Stripe Payment Intent ID
+    expiresAt: { type: Date }, // Expiration date for pending bookings
   },
   { timestamps: true },
 )

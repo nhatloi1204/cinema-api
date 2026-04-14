@@ -97,29 +97,37 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
         const charge = event.data.object as Stripe.Charge
         console.log('💰 Refund processed:', charge.id)
 
-        // Find booking via payment intent metadata
-        if (charge.payment_intent) {
-          try {
-            const paymentIntent = await stripe.paymentIntents.retrieve(
-              charge.payment_intent as string,
-            )
-            const bookingId = paymentIntent.metadata?.bookingId
+        // Find booking via paymentIntentId
+        const paymentIntentId = charge.payment_intent as string
 
-            if (bookingId) {
+        if (paymentIntentId) {
+          try {
+            // Find booking by paymentIntentId (more efficient than retrieving payment intent)
+            const booking = await Booking.findOne({
+              paymentIntentId,
+            })
+
+            if (booking) {
               // Update booking status to 'cancelled'
               const updatedBooking = await Booking.findByIdAndUpdate(
-                bookingId,
+                booking._id,
                 { paymentStatus: 'cancelled' },
                 { new: true },
               )
 
               if (updatedBooking) {
                 console.log(
-                  `✅ Booking ${bookingId} cancelled - refund processed`,
+                  `✅ Booking ${booking._id} cancelled - refund processed`,
                 )
               } else {
-                console.error(`Booking ${bookingId} not found for cancellation`)
+                console.error(
+                  `Booking ${booking._id} not found for cancellation`,
+                )
               }
+            } else {
+              console.warn(
+                `No booking found for paymentIntentId: ${paymentIntentId}`,
+              )
             }
           } catch (error) {
             console.error('Error processing refund webhook:', error)
