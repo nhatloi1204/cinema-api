@@ -43,7 +43,6 @@ export const createShopItem = async (req: Request, res: Response) => {
       ...req.body,
       ...(req.file && { image: req.file.path }),
     }
-    console.log('Received shop item data:', shopData)
 
     const shopItem = await ShopItem.create(shopData)
     res.status(201).json(shopItem)
