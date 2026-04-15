@@ -12,18 +12,30 @@ const requireAdmin = [verifyUser, checkRole('Admin')]
 router.use(requireAdmin)
 
 // SHOP ITEMS
-router.post('/shop-items', adminController.createShopItem)
-router.put('/shop-items/:id', adminController.updateShopItem)
+router.post(
+  '/shop-items',
+  uploadCloud.single('shop-item'),
+  adminController.createShopItem,
+)
+router.put(
+  '/shop-items/:id',
+  uploadCloud.single('shop-item'),
+  adminController.updateShopItem,
+)
 router.delete('/shop-items/:id', adminController.deleteShopItem)
 
 // NEWS
-router.post('/news', adminController.createNews)
-router.put('/news/:id', adminController.updateNews)
+router.post('/news', uploadCloud.single('news'), adminController.createNews)
+router.put('/news/:id', uploadCloud.single('news'), adminController.updateNews)
 router.delete('/news/:id', adminController.deleteNews)
 
 // EVENTS
-router.post('/events', adminController.createEvent)
-router.put('/events/:id', adminController.updateEvent)
+router.post('/events', uploadCloud.single('event'), adminController.createEvent)
+router.put(
+  '/events/:id',
+  uploadCloud.single('event'),
+  adminController.updateEvent,
+)
 router.delete('/events/:id', adminController.deleteEvent)
 
 // MOVIES
@@ -64,28 +76,12 @@ router.post('/showtimes/save-generated', adminController.saveGeneratedShowtimes)
 // BANNERS
 router.post(
   '/banners',
-  (req, res, next) => {
-    uploadCloud.single('image')(req, res, err => {
-      if (err) {
-        console.error('Multer error:', err)
-        return res.status(400).json({ error: 'File upload failed' })
-      }
-      next()
-    })
-  },
+  uploadCloud.single('image'),
   adminController.createBanner,
 )
 router.put(
   '/banners/:id',
-  (req, res, next) => {
-    uploadCloud.single('image')(req, res, err => {
-      if (err) {
-        console.error('Multer error:', err)
-        return res.status(400).json({ error: 'File upload failed' })
-      }
-      next()
-    })
-  },
+  uploadCloud.single('image'),
   adminController.updateBanner,
 )
 router.delete('/banners/:id', adminController.deleteBanner)

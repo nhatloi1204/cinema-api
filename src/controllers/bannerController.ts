@@ -7,19 +7,15 @@ import { Banner } from '../models/Banner'
 // @route POST /admin/banners
 // @access Admin
 export const createBanner = async (req: Request, res: Response) => {
-  console.log('createBanner function called')
   try {
-    console.log('Inside try block')
     const bannerData = {
       ...req.body,
       image: req.file?.path,
     }
-    console.log('Banner data:', bannerData)
 
     const banner = await Banner.create(bannerData)
     res.status(201).json(banner)
   } catch (error) {
-    console.error('Error in createBanner:', error)
     res.status(500).json({ message: 'Create Banner Failed', error })
   }
 }
