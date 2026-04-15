@@ -39,8 +39,13 @@ export const getShopItemById = async (req: Request, res: Response) => {
 // @access Admin
 export const createShopItem = async (req: Request, res: Response) => {
   try {
-    const { name, description, price, image } = req.body
-    const shopItem = await ShopItem.create({ name, description, price, image })
+    const shopData = {
+      ...req.body,
+      ...(req.file && { image: req.file.path }),
+    }
+    console.log('Received shop item data:', shopData)
+
+    const shopItem = await ShopItem.create(shopData)
     res.status(201).json(shopItem)
   } catch (error) {
     res.status(500).json({ message: 'Create Shop Item Failed', error })
@@ -53,7 +58,12 @@ export const createShopItem = async (req: Request, res: Response) => {
 export const updateShopItem = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const updatedItem = await ShopItem.findByIdAndUpdate(id, req.body, {
+    const updateData = {
+      ...req.body,
+      ...(req.file && { image: req.file.path }),
+    }
+
+    const updatedItem = await ShopItem.findByIdAndUpdate(id, updateData, {
       new: true,
     })
     if (!updatedItem) {

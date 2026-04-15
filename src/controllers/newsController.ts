@@ -8,8 +8,12 @@ import { News } from '../models/News'
 // @access Admin
 export const createNews = async (req: Request, res: Response) => {
   try {
-    const { title, content, image } = req.body
-    const news = await News.create({ title, content, image })
+    const newsData = {
+      ...req.body,
+      ...(req.file && { image: req.file.path }),
+    }
+
+    const news = await News.create(newsData)
     res.status(201).json(news)
   } catch (error) {
     res.status(500).json({ message: 'Create News Failed', error })
@@ -22,7 +26,12 @@ export const createNews = async (req: Request, res: Response) => {
 export const updateNews = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const updatedNews = await News.findByIdAndUpdate(id, req.body, {
+    const updateData = {
+      ...req.body,
+      ...(req.file && { image: req.file.path }),
+    }
+
+    const updatedNews = await News.findByIdAndUpdate(id, updateData, {
       new: true,
     })
 

@@ -3,9 +3,9 @@ const { Schema } = mongoose
 
 const shopItemSchema = new mongoose.Schema(
   {
-    name: String,
+    name: { type: String, required: true },
     description: String,
-    price: Number,
+    price: { type: Number, required: true },
     image: String,
   },
   { timestamps: true },

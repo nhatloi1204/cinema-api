@@ -9,13 +9,15 @@ import { parseDate } from '../utils/parseDate'
 // @access Admin
 export const createEvent = async (req: Request, res: Response) => {
   try {
-    const { title, description, image, startDate, endDate } = req.body
+    const eventData = {
+      ...req.body,
+      ...(req.file && { image: req.file.path }),
+    }
+
     const event = await Event.create({
-      title,
-      description,
-      image,
-      startDate: parseDate(startDate),
-      endDate: parseDate(endDate),
+      ...eventData,
+      startDate: parseDate(eventData.startDate),
+      endDate: parseDate(eventData.endDate),
     })
     res.status(201).json(event)
   } catch (error) {
@@ -29,20 +31,20 @@ export const createEvent = async (req: Request, res: Response) => {
 export const updateEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const { title, description, image, startDate, endDate } = req.body
-    const updatedEvent = await Event.findByIdAndUpdate(
-      id,
-      {
-        title,
-        description,
-        image,
-        startDate: parseDate(startDate),
-        endDate: parseDate(endDate),
-      },
-      {
-        new: true,
-      },
-    )
+    const updateData = {
+      ...req.body,
+      ...(req.file && { image: req.file.path }),
+    }
+    if (updateData.startDate) {
+      updateData.startDate = parseDate(updateData.startDate)
+    }
+    if (updateData.endDate) {
+      updateData.endDate = parseDate(updateData.endDate)
+    }
+
+    const updatedEvent = await Event.findByIdAndUpdate(id, updateData, {
+      new: true,
+    })
 
     if (!updatedEvent) {
       res.status(404).json({ message: 'Event not found' })
