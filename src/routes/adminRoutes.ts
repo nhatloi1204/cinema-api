@@ -14,26 +14,26 @@ router.use(requireAdmin)
 // SHOP ITEMS
 router.post(
   '/shop-items',
-  uploadCloud.single('shop-item'),
+  uploadCloud.single('image'),
   adminController.createShopItem,
 )
 router.put(
   '/shop-items/:id',
-  uploadCloud.single('shop-item'),
+  uploadCloud.single('image'),
   adminController.updateShopItem,
 )
 router.delete('/shop-items/:id', adminController.deleteShopItem)
 
 // NEWS
-router.post('/news', uploadCloud.single('news'), adminController.createNews)
-router.put('/news/:id', uploadCloud.single('news'), adminController.updateNews)
+router.post('/news', uploadCloud.single('image'), adminController.createNews)
+router.put('/news/:id', uploadCloud.single('image'), adminController.updateNews)
 router.delete('/news/:id', adminController.deleteNews)
 
 // EVENTS
-router.post('/events', uploadCloud.single('event'), adminController.createEvent)
+router.post('/events', uploadCloud.single('image'), adminController.createEvent)
 router.put(
   '/events/:id',
-  uploadCloud.single('event'),
+  uploadCloud.single('image'),
   adminController.updateEvent,
 )
 router.delete('/events/:id', adminController.deleteEvent)
